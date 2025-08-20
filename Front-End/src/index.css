@@ -1,0 +1,22 @@
+@import url("https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #e16b97;
+  --color-secondary: #ffa1c4;
+  --color-white-sup: #ffe7f0;
+  --color-white: #fff;
+
+  --color-success: #22ca74;
+  --color-error: #c21413;
+  --color-warning: #ffc300;
+
+  --font-raleway: "Raleway";
+  --font-lato: "Lato";
+  --font-playfair: "PlayFair";
+}
