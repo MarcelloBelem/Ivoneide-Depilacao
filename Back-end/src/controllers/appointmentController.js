@@ -909,6 +909,50 @@ export const completeAppointmentByProfessional = async (req, res) => {
       });
     }
 
+    // Formata detalhes para enviar no WhatsApp
+    const formattedDate = appointment.appointment_date_time.toLocaleDateString(
+      "pt-BR",
+      {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }
+    );
+    const formattedTime = appointment.appointment_date_time.toLocaleTimeString(
+      "pt-BR",
+      { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }
+    );
+    const serviceNames = appointment.services.map((s) => s.name).join(", ");
+
+    const messageWhats = `Olá, ${appointment.client.name}! 💜
+
+Esperamos que você tenha aproveitado seu atendimento! Seu serviço foi *finalizado* com sucesso. ✅
+
+📌 Detalhes do agendamento:
+• Data: ${formattedDate}
+• Horário: ${formattedTime}
+• Serviço(s): ${serviceNames}
+
+Agradecemos por escolher nossos serviços! Qualquer dúvida ou feedback, estamos à disposição no WhatsApp 🥰`;
+
+    //Envia mensagem no Whatsapp
+    try {
+      await messageWhatsapp(appointment.client.phone_number, messageWhats);
+    } catch (err) {
+      if (
+        err.message ===
+        "Número inválido ou não possui WhatsApp. O agendamento não foi confirmado."
+      ) {
+        return res.status(400).json({ msg: err.message });
+      }
+      console.error("Erro ao enviar mensagem:", err);
+      return res.status(500).json({
+        msg: "Erro ao enviar mensagem no WhatsApp. O agendamento não foi confirmado.",
+      });
+    }
+
+    //Atualiza o status do agendamento
     await sequelize.transaction(async (t) => {
       await appointment.update({ status: "completed" }, { transaction: t });
     });
