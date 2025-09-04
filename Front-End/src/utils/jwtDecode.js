@@ -10,6 +10,7 @@ export const getUserFromToken = () => {
         name: decode.name,
         email: decode.email,
         role: decode.role,
+        is_active: decode.is_active,
       };
     } catch (error) {
       console.error("Falha ao decodificar o token:", error);

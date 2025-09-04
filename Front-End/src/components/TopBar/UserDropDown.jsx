@@ -16,7 +16,11 @@ const UserDropDown = () => {
   const [alertType, setAlertType] = useState("");
 
   //Dados do usuário
-  const [userData, setUserData] = useState({ name: "", email: "" });
+  const [userData, setUserData] = useState({
+    name: "",
+    email: "",
+    is_active: false,
+  });
 
   const handleToggle = () => setIsOpen(!isOpen);
 
@@ -47,7 +51,6 @@ const UserDropDown = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
   return (
     <div className="relative" ref={dropdownRef}>
       <Alert
@@ -68,6 +71,18 @@ const UserDropDown = () => {
           <div className="px-4 py-3 text-sm text-gray-900">
             <div>{userData.name}</div>
             <div className="truncate font-medium">{userData.email}</div>
+            <div>
+              Conta:{" "}
+              <span
+                className={
+                  userData.is_active
+                    ? "font-semibold text-green-600"
+                    : "font-semibold text-orange-500"
+                }
+              >
+                {userData.is_active ? "Ativa " : "Pendente "}
+              </span>
+            </div>
           </div>
           <ul className="py-2 text-sm text-gray-700">
             <li>

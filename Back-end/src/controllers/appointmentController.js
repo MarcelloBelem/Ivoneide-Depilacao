@@ -8,6 +8,7 @@ import {
 import { validateAppointmentDateTime } from "../utils/validateAppointmentDateTime.js";
 import { sequelize } from "../config/database.js";
 import pkg from "sequelize";
+import { messageWhatsapp } from "../services/evolution.js";
 
 const { Op } = pkg; // Permite acesso aos operadores do sequelize
 const User = db.User; //Acessa o modelo de user do DB
@@ -17,8 +18,15 @@ const AppointmentService = db.AppointmentService; // Acessa o modelo de Appointm
 
 // Cria agendamento
 export const createAppointment = async (req, res) => {
-  const clientId = req.user.id;
+  const clientData = req.user;
+
   try {
+    if (!req.user.is_active) {
+      return res.status(403).json({
+        msg: "Sua conta ainda não foi ativada. Ative-a para agendar um horário.",
+      });
+    }
+
     //Validação com ZOD
     const validatedData = createAppointmentSchema.parse(req.body);
 
@@ -29,7 +37,7 @@ export const createAppointment = async (req, res) => {
     //Verificar se cliente tem agendamento ativo
     const activeAppointment = await Appointment.findAll({
       where: {
-        client_id: clientId,
+        client_id: clientData.id,
         status: ["pending", "confirmed"], // Busca por agendamentos pendentes ou confirmados
       },
     });
@@ -69,13 +77,49 @@ export const createAppointment = async (req, res) => {
     //Verifica se services existem ou estão ativos
     const services = await Service.findAll({
       where: { id: service_ids, is_active: true },
-      attributes: ["id", "price"],
+      attributes: ["id", "price", "name"],
     });
-
     if (services.length !== service_ids.length) {
       return res.status(400).json({
         msg: "Um ou mais serviços são inválidos ou não estão ativos.",
       });
+    }
+
+    const dateObj = new Date(appointment_date_time);
+    const formattedDate = dateObj.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const formattedTime = dateObj.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const serviceNames = services.map((s) => s.dataValues.name).join(", ");
+
+    const messageWhats = `Olá, ${clientData.name}! 💜
+    
+Tudo certo! Seu horário foi *agendado* com sucesso. 🗓️
+
+📌 Detalhes do agendamento:
+• Data: ${formattedDate}
+• Horário: ${formattedTime}
+• Serviço(s): ${serviceNames}
+
+Qualquer dúvida, estamos à disposição no WhatsApp.  
+Até lá! 🥰`;
+
+    try {
+      //Envia mensagem no Whatsapp
+      await messageWhatsapp(clientData.phone_number, messageWhats);
+    } catch (err) {
+      if (err.message === "Número inválido ou não possui WhatsApp") {
+        return res.status(400).json({ msg: err.message });
+      }
+      console.error("Erro ao enviar mensagem:", err);
+      return res.status(500).json({ msg: "Erro interno do servidor." });
     }
 
     //Mapeia os serviços para facil acesso aos preços
@@ -88,7 +132,7 @@ export const createAppointment = async (req, res) => {
       //Criar agendamento principal
       const newAppointment = await Appointment.create(
         {
-          client_id: clientId,
+          client_id: clientData.id,
           professional_id: professional_id,
           appointment_date_time: appointment_date_time,
           status: "pending",
@@ -291,7 +335,7 @@ export const getClientAppointment = async (req, res) => {
 
 export const updateAppointmentByClient = async (req, res) => {
   const { id } = req.params;
-  const clientId = req.user.id;
+  const clientData = req.user;
 
   try {
     const validatedData = updateAppointmentSchema.parse(req.body);
@@ -308,8 +352,9 @@ export const updateAppointmentByClient = async (req, res) => {
         .json({ msg: "Nenhum dado para atualização foi fornecido." });
     }
 
+    //Busca o agendamento
     const appointment = await Appointment.findOne({
-      where: { id: id, client_id: clientId },
+      where: { id: id, client_id: clientData.id },
       include: [
         {
           model: Service,
@@ -324,7 +369,7 @@ export const updateAppointmentByClient = async (req, res) => {
         msg: "Agendamento não encontrado ou você não tem permissão para editá-lo.",
       });
     }
-
+    //Verifica status do agendamento
     if (appointment.status !== "pending") {
       const statusMap = {
         pending: "Pendente",
@@ -345,6 +390,7 @@ export const updateAppointmentByClient = async (req, res) => {
     let isDateTimeChanged = false;
     let isServicesChanged = false;
 
+    //Valida nova data e hora, se fornecida
     if (appointment_date || appointment_time) {
       const dateToUse =
         appointment_date ||
@@ -366,6 +412,7 @@ export const updateAppointmentByClient = async (req, res) => {
       ) {
         isDateTimeChanged = true;
 
+        //Verifica se já existe conflito com outro agendamento do mesmo profissional
         const existingConflict = await Appointment.findOne({
           where: {
             professional_id: appointment.professional_id,
@@ -383,6 +430,7 @@ export const updateAppointmentByClient = async (req, res) => {
       }
     }
 
+    //Valida se houve mudança nos serviços
     if (service_ids && service_ids.length > 0) {
       const currentServicesIds = appointment.services.map((s) => s.id).sort();
 
@@ -403,6 +451,64 @@ export const updateAppointmentByClient = async (req, res) => {
       });
     }
 
+    // Busca os serviços atualizados para enviar na mensagem
+    let updatedServices = appointment.services;
+    if (isServicesChanged) {
+      updatedServices = await Service.findAll({
+        where: { id: service_ids, is_active: true },
+        attributes: ["id", "name", "price"],
+      });
+
+      if (updatedServices.length !== service_ids.length) {
+        return res.status(400).json({
+          msg: "Um ou mais novos serviços são inválidos ou não estão ativos.",
+        });
+      }
+    }
+
+    //Monta a mensagem para o WhatsApp
+    const dateObj = new Date(finalAppointmentDateTime);
+    const formattedDate = dateObj.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const formattedTime = dateObj.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const serviceNames = updatedServices.map((s) => s.name).join(", ");
+
+    const messageWhats = `Olá, ${clientData.name}! 💜
+    
+Seu agendamento foi *atualizado* com sucesso! ✍️✨
+
+📌 Detalhes do agendamento:
+• Data: ${formattedDate}
+• Horário: ${formattedTime}
+• Serviço(s): ${serviceNames}
+
+Qualquer dúvida, estamos à disposição no WhatsApp.  
+Até lá! 🥰`;
+
+    //Envia mensagem no Whatsapp
+    try {
+      await messageWhatsapp(clientData.phone_number, messageWhats);
+    } catch (err) {
+      if (
+        err.message ===
+        "Número inválido ou não possui WhatsApp. O agendamento não foi atualizado."
+      ) {
+        return res.status(400).json({ msg: err.message });
+      }
+      console.error("Erro ao enviar mensagem:", err);
+      return res.status(500).json({
+        msg: "Erro ao enviar mensagem no WhatsApp. O agendamento não foi atualizado.",
+      });
+    }
+
     const result = await sequelize.transaction(async (t) => {
       if (appointment_date || appointment_time) {
         await appointment.update(
@@ -419,18 +525,7 @@ export const updateAppointmentByClient = async (req, res) => {
           transaction: t,
         });
 
-        const newServices = await Service.findAll({
-          where: { id: service_ids, is_active: true },
-          attributes: ["id", "price"],
-        });
-
-        if (newServices.length !== service_ids.length) {
-          throw new Error(
-            "Um ou mais novos serviços são inválidos ou não estão ativos."
-          );
-        }
-
-        const newServicesMap = newServices.reduce((map, service) => {
+        const newServicesMap = updatedServices.reduce((map, service) => {
           map[service.id] = service.price;
           return map;
         }, {});
@@ -441,13 +536,12 @@ export const updateAppointmentByClient = async (req, res) => {
           service_price_at_time_of_booking: newServicesMap[serviceId],
         }));
 
-        // Inserir os novos registros na tabela appointment_services
         await AppointmentService.bulkCreate(newAppointmentServicesData, {
           transaction: t,
         });
       }
 
-      const updateAppointment = await Appointment.findByPk(appointment.id, {
+      return await Appointment.findByPk(appointment.id, {
         include: [
           {
             model: Service,
@@ -467,8 +561,6 @@ export const updateAppointmentByClient = async (req, res) => {
         ],
         transaction: t,
       });
-
-      return updateAppointment;
     });
 
     return res.status(200).json({
@@ -499,11 +591,19 @@ export const updateAppointmentByClient = async (req, res) => {
 
 export const cancelAppointmentByClient = async (req, res) => {
   const { id } = req.params;
-  const clientId = req.user.id;
+  const clientData = req.user;
 
   try {
     const appointment = await Appointment.findOne({
-      where: { id: id, client_id: clientId },
+      where: { id: id, client_id: clientData.id },
+      include: [
+        {
+          model: Service,
+          as: "services",
+          attributes: ["name"],
+          through: { attributes: [] },
+        },
+      ],
     });
 
     if (!appointment) {
@@ -527,6 +627,50 @@ export const cancelAppointmentByClient = async (req, res) => {
       });
     }
 
+    // Formatando data e hora do agendamento
+    const dateObj = new Date(appointment.appointment_date_time);
+    const formattedDate = dateObj.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const formattedTime = dateObj.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const serviceNames = appointment.services.map((s) => s.name).join(", ");
+
+    const messageWhats = `Olá, ${clientData.name}! 💜
+
+Que pena que você precisou *cancelar* seu agendamento! 😔
+
+📌 Detalhes do agendamento cancelado:
+• Data: ${formattedDate}
+• Horário: ${formattedTime}
+• Serviço(s): ${serviceNames}
+
+Esperamos vê-la em breve! Qualquer dúvida, estamos à disposição no WhatsApp.  
+Até lá! 🥰`;
+
+    //Envia mensagem no Whatsapp
+    try {
+      await messageWhatsapp(clientData.phone_number, messageWhats);
+    } catch (err) {
+      if (
+        err.message ===
+        "Número inválido ou não possui WhatsApp. O agendamento não foi cancelado."
+      ) {
+        return res.status(400).json({ msg: err.message });
+      }
+      console.error("Erro ao enviar mensagem:", err);
+      return res.status(500).json({
+        msg: "Erro ao enviar mensagem no WhatsApp. O agendamento não foi cancelado.",
+      });
+    }
+
+    //Atualiza o status para "cancelled"
     await sequelize.transaction(async (t) => {
       await appointment.update({ status: "cancelled" }, { transaction: t });
     });
@@ -626,6 +770,18 @@ export const confirmAppointmentByProfessional = async (req, res) => {
   try {
     const appointment = await Appointment.findOne({
       where: { id: id, professional_id: professionalId },
+      include: [
+        {
+          model: Service,
+          as: "services",
+          through: { attributes: ["service_price_at_time_of_booking"] },
+        },
+        {
+          model: User,
+          as: "client",
+          attributes: ["id", "name", "email", "phone_number"],
+        },
+      ],
     });
 
     if (!appointment) {
@@ -640,6 +796,52 @@ export const confirmAppointmentByProfessional = async (req, res) => {
       });
     }
 
+    // Formata detalhes para enviar no WhatsApp
+    const formattedDate = appointment.appointment_date_time.toLocaleDateString(
+      "pt-BR",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }
+    );
+    const formattedTime = appointment.appointment_date_time.toLocaleTimeString(
+      "pt-BR",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
+    const serviceNames = appointment.services.map((s) => s.name).join(", ");
+
+    const messageWhats = `Olá, ${appointment.client.name}! 💜
+
+Boas notícias! Seu agendamento foi *confirmado* pelo profissional. ✅
+
+📌 Detalhes do agendamento:
+• Data: ${formattedDate}
+• Horário: ${formattedTime}
+• Serviço(s): ${serviceNames}
+
+Estamos ansiosos para recebê-lo(a)! Qualquer dúvida, estamos à disposição no WhatsApp 🥰`;
+
+    //Envia mensagem no Whatsapp
+    try {
+      await messageWhatsapp(appointment.client.phone_number, messageWhats);
+    } catch (err) {
+      if (
+        err.message ===
+        "Número inválido ou não possui WhatsApp. O agendamento não foi confirmado."
+      ) {
+        return res.status(400).json({ msg: err.message });
+      }
+      console.error("Erro ao enviar mensagem:", err);
+      return res.status(500).json({
+        msg: "Erro ao enviar mensagem no WhatsApp. O agendamento não foi confirmado.",
+      });
+    }
+
+    //Atualiza o status do agendamento
     await sequelize.transaction(async (t) => {
       await appointment.update({ status: "confirmed" }, { transaction: t });
     });
@@ -746,6 +948,18 @@ export const cancelAppointmentByProfessional = async (req, res) => {
   try {
     const appointment = await Appointment.findOne({
       where: { id: id, professional_id: professionalId },
+      include: [
+        {
+          model: Service,
+          as: "services",
+          through: { attributes: ["service_price_at_time_of_booking"] },
+        },
+        {
+          model: User,
+          as: "client",
+          attributes: ["id", "name", "email", "phone_number"],
+        },
+      ],
     });
 
     if (!appointment) {
@@ -766,6 +980,57 @@ export const cancelAppointmentByProfessional = async (req, res) => {
       });
     }
 
+    // Formata detalhes para enviar no WhatsApp
+    const formattedDate = appointment.appointment_date_time.toLocaleDateString(
+      "pt-BR",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }
+    );
+    const formattedTime = appointment.appointment_date_time.toLocaleTimeString(
+      "pt-BR",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
+    const serviceNames = appointment.services.map((s) => s.name).join(", ");
+
+    const previousStatus = appointment.status;
+
+    const messageWhats = `Olá, ${appointment.client.name}! 💜
+
+Sentimos muito! O profissional precisou cancelar seu agendamento ${
+      previousStatus === "confirmed" ? "que já estava confirmado" : "solicitado"
+    }. ❌
+
+📌 Detalhes do agendamento cancelado:
+• Data: ${formattedDate}
+• Horário: ${formattedTime}
+• Serviço(s): ${serviceNames}
+
+Você pode reagendar seu horário a qualquer momento ou enviar uma mensagem para entender o motivo do cancelamento.  
+Estamos aqui para ajudá-lo(a)! 💜`;
+
+    //Envia mensagem no Whatsapp
+    try {
+      await messageWhatsapp(appointment.client.phone_number, messageWhats);
+    } catch (err) {
+      if (
+        err.message ===
+        "Número inválido ou não possui WhatsApp. O agendamento não foi cancelado."
+      ) {
+        return res.status(400).json({ msg: err.message });
+      }
+      console.error("Erro ao enviar mensagem:", err);
+      return res.status(500).json({
+        msg: "Erro ao enviar mensagem no WhatsApp. O agendamento não foi cancelado.",
+      });
+    }
+
+    //Atualiza o status do agendamento
     await sequelize.transaction(async (t) => {
       await appointment.update({ status: "cancelled" }, { transaction: t });
     });

@@ -88,7 +88,7 @@ const index = () => {
 
   useEffect(() => {
     const fetchSlots = async () => {
-      const PROFESSIONAL_ID = 10; // UNICA PROFESSIONAL NO MOMENTO
+      const PROFESSIONAL_ID = 25; // UNICA PROFESSIONAL NO MOMENTO
 
       if (
         !selectedDate ||

@@ -9,6 +9,7 @@ import Login from "../pages/Public/Login";
 import Register from "../pages/Public/Register/Register";
 import ForgotPassword from "../pages/Public/ForgotPassword/ForgotPassword";
 import ResetPassword from "../pages/Public/ForgotPassword/ResetPassword";
+import ActivateAccount from "../pages/Public/ActivateAccount";
 
 /// Privadas
 //// Cliente
@@ -31,6 +32,7 @@ const AppRoutes = () => {
         <Route path="/Cadastro" element={<Register />} />
         <Route path="/EsqueceuSenha" element={<ForgotPassword />} />
         <Route path="/RedefinirSenha" element={<ResetPassword />} />
+        <Route path="/AtivarConta" element={<ActivateAccount />} />
       </Route>
 
       <Route element={<PrivateRoutes />}>

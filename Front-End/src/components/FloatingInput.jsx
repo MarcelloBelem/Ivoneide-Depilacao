@@ -1,11 +1,13 @@
 import React from "react";
 
 const FloatingInput = React.forwardRef(
-  ({ id, label, type = "text", error, ...rest }, ref) => {
+  ({ id, label, type = "text", value, error, ...rest }, ref) => {
     const lengthLimits = {
       text: { min: 3, max: 35 },
       password: { min: 5, max: 15 },
       email: { min: 5, max: 100 },
+      tel: { min: 10, max: 11 },
+      code: { min: 6, max: 6 },
     };
 
     const { min, max } = lengthLimits[type];

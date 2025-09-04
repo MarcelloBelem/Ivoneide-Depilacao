@@ -70,7 +70,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     // Remove o índice único parcial via SQL direto
-    await queryInterface.sequelize.query(`
+    await queryInterface.sequelize.query(`
       DROP INDEX IF EXISTS "unique_active_appointment_per_client_professional_time";
     `);
 

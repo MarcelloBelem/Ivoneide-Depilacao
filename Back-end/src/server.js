@@ -17,7 +17,7 @@ app.use("/api", allRoutes);
 async function startServer() {
   await connectDB();
 
-  app.listen(3000, () => console.log(`SERVIDOR ON`));
+  app.listen(3030, () => console.log(`SERVIDOR ON`));
 }
 
 startServer();

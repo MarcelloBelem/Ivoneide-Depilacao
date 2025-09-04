@@ -2,6 +2,7 @@ import { React, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { registerUser } from "../../../services/authServices";
+import { formatWhatsapp } from "../../../utils/formatWhatsapp.js";
 
 //Componentes
 import Logo from "../../../components/Logo";
@@ -34,6 +35,7 @@ const Register = () => {
         email: data.email,
         password: data.password,
         role: "client",
+        phone_number: data.whatsapp.replace(/\D/g, ""),
       });
 
       console.log("Registro bem-sucedido:", response);
@@ -44,7 +46,7 @@ const Register = () => {
       setTimeout(() => {
         setLoading(false);
         navigate("/");
-      }, 3000);
+      }, 1000);
     } catch (error) {
       console.error("Erro no cadastro:", error);
       const errorMessage =
@@ -56,6 +58,7 @@ const Register = () => {
       setLoading(false);
     }
   };
+
   return (
     <div className="bg-primary relative flex h-dvh flex-col items-center justify-between pt-3">
       {loading && <Loading />}
@@ -119,6 +122,24 @@ const Register = () => {
                 },
               })}
             />
+
+            <FloatingInput
+              id="whatsapp"
+              label="Número do WhatsApp"
+              type="text"
+              error={errors.whatsapp}
+              {...register("whatsapp", {
+                required: "WhatsApp é obrigatório",
+                pattern: {
+                  value: /^\(\d{2}\) 9 \d{4}-\d{4}$/,
+                  message: "Número inválido",
+                },
+                onChange: (e) => {
+                  e.target.value = formatWhatsapp(e.target.value);
+                },
+              })}
+            />
+
             <FloatingInput
               id="password"
               label="Senha"

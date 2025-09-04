@@ -4,6 +4,7 @@ import {
   getAppointments,
   cancelAppointment,
 } from "../../../../services/clienteAppointmentService";
+import { getUserFromToken } from "../../../../utils/jwtDecode";
 
 //Components
 import TopBar from "../../../../components/TopBar";
@@ -19,6 +20,13 @@ const Index = () => {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [alertType, setAlertType] = useState("");
+
+  //Dados do usuário
+  const [userData, setUserData] = useState({
+    name: "",
+    email: "",
+    is_active: false,
+  });
 
   const navigate = useNavigate();
 
@@ -74,6 +82,12 @@ const Index = () => {
   };
 
   useEffect(() => {
+    const userDataFromToken = getUserFromToken();
+
+    if (userDataFromToken) {
+      setUserData(userDataFromToken);
+    }
+
     fetchAppointments();
   }, []);
 
@@ -238,13 +252,26 @@ const Index = () => {
               Agendar Horário
             </button>
           ) : (
-            <Link to="/AgendarHorario">
-              <button
-                className={`bg-primary hover:bg-secondary w-max rounded-xl px-10 py-3 text-base text-white`}
-              >
-                Agendar Horário
-              </button>
-            </Link>
+            <button
+              onClick={() => {
+                if (!userData.is_active) {
+                  setAlertMessage(
+                    "Sua conta ainda não foi ativada. Verifique seu whatsapp!",
+                  );
+                  setAlertType("warning");
+                  setShowAlert(true);
+                } else {
+                  navigate("/AgendarHorario");
+                }
+              }}
+              className={`w-max rounded-xl px-10 py-3 text-base text-white ${
+                !userData.is_active
+                  ? "cursor-not-allowed bg-gray-400 hover:bg-gray-400"
+                  : "bg-primary hover:bg-secondary"
+              }`}
+            >
+              Agendar Horário
+            </button>
           )}
         </div>
       </div>

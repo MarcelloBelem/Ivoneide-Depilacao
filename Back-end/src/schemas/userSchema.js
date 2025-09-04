@@ -15,6 +15,13 @@ export const createUserSchema = z.object({
     .email({ msg: "Formato de e-mail inválido." })
     .max(255, { message: "E-mail deve ter no máximo 255 caracteres." }),
 
+  phone_number: z
+    .string({ required_error: "Celular é obrigatório" })
+    .transform((value) => value.replace(/\D/g, ""))
+    .refine((value) => value.length >= 10 && value.length <= 15, {
+      message: "Celular deve ter entre 10 e 15 dígitos.",
+    }),
+
   password: z
     .string({
       required_error: "Senha é obrigatória.",
@@ -28,6 +35,14 @@ export const createUserSchema = z.object({
     })
     .default("client")
     .optional(),
+});
+
+export const activateAccountSchema = z.object({
+  email: z.string().email("E-mail inválido").nonempty("O e-mail é obrigatório"),
+  activation_code: z
+    .string()
+    .length(6, "O código de ativação deve ter 6 dígitos")
+    .regex(/^\d+$/, "O código deve conter apenas números"),
 });
 
 export const loginUserSchema = z.object({

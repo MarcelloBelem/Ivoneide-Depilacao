@@ -10,10 +10,12 @@ const User = sequelize.define(
       primaryKey: true,
       allowNull: false,
     },
+
     name: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+
     email: {
       type: DataTypes.STRING(255),
       unique: true,
@@ -22,14 +24,31 @@ const User = sequelize.define(
         isEmail: true,
       },
     },
+
+    phone_number: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+
     password_hash: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+
     role: {
       type: DataTypes.ENUM("client", "professional"),
       defaultValue: "client",
       allowNull: false,
+    },
+
+    activation_code: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {
