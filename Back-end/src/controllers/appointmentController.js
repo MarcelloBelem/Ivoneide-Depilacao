@@ -85,14 +85,16 @@ export const createAppointment = async (req, res) => {
       });
     }
 
-    const dateObj = new Date(appointment_date_time);
+    const dateObj = new Date(appointment_date_time + "T00:00:00Z");
     const formattedDate = dateObj.toLocaleDateString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
 
     const formattedTime = dateObj.toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -467,14 +469,16 @@ export const updateAppointmentByClient = async (req, res) => {
     }
 
     //Monta a mensagem para o WhatsApp
-    const dateObj = new Date(finalAppointmentDateTime);
+    const dateObj = new Date(finalAppointmentDateTime + "T00:00:00Z");
     const formattedDate = dateObj.toLocaleDateString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
 
     const formattedTime = dateObj.toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -628,14 +632,16 @@ export const cancelAppointmentByClient = async (req, res) => {
     }
 
     // Formatando data e hora do agendamento
-    const dateObj = new Date(appointment.appointment_date_time);
+    const dateObj = new Date(appointment.appointment_date_time + "T00:00:00Z");
     const formattedDate = dateObj.toLocaleDateString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
 
     const formattedTime = dateObj.toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -800,6 +806,7 @@ export const confirmAppointmentByProfessional = async (req, res) => {
     const formattedDate = appointment.appointment_date_time.toLocaleDateString(
       "pt-BR",
       {
+        timeZone: "America/Sao_Paulo",
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -807,10 +814,7 @@ export const confirmAppointmentByProfessional = async (req, res) => {
     );
     const formattedTime = appointment.appointment_date_time.toLocaleTimeString(
       "pt-BR",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
+      { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }
     );
     const serviceNames = appointment.services.map((s) => s.name).join(", ");
 
@@ -984,6 +988,7 @@ export const cancelAppointmentByProfessional = async (req, res) => {
     const formattedDate = appointment.appointment_date_time.toLocaleDateString(
       "pt-BR",
       {
+        timeZone: "America/Sao_Paulo",
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -991,10 +996,7 @@ export const cancelAppointmentByProfessional = async (req, res) => {
     );
     const formattedTime = appointment.appointment_date_time.toLocaleTimeString(
       "pt-BR",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
+      { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }
     );
     const serviceNames = appointment.services.map((s) => s.name).join(", ");
 
