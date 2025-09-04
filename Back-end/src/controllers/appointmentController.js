@@ -85,7 +85,7 @@ export const createAppointment = async (req, res) => {
       });
     }
 
-    const dateObj = new Date(appointment_date_time + "T00:00:00Z");
+    const dateObj = new Date(appointment_date_time);
     const formattedDate = dateObj.toLocaleDateString("pt-BR", {
       timeZone: "America/Sao_Paulo",
       day: "2-digit",
@@ -469,7 +469,7 @@ export const updateAppointmentByClient = async (req, res) => {
     }
 
     //Monta a mensagem para o WhatsApp
-    const dateObj = new Date(finalAppointmentDateTime + "T00:00:00Z");
+    const dateObj = new Date(finalAppointmentDateTime);
     const formattedDate = dateObj.toLocaleDateString("pt-BR", {
       timeZone: "America/Sao_Paulo",
       day: "2-digit",
@@ -632,7 +632,7 @@ export const cancelAppointmentByClient = async (req, res) => {
     }
 
     // Formatando data e hora do agendamento
-    const dateObj = new Date(appointment.appointment_date_time + "T00:00:00Z");
+    const dateObj = new Date(appointment.appointment_date_time);
     const formattedDate = dateObj.toLocaleDateString("pt-BR", {
       timeZone: "America/Sao_Paulo",
       day: "2-digit",
