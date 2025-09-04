@@ -889,6 +889,18 @@ export const completeAppointmentByProfessional = async (req, res) => {
   try {
     const appointment = await Appointment.findOne({
       where: { id: id, professional_id: professionalId },
+      include: [
+        {
+          model: Service,
+          as: "services",
+          through: { attributes: ["service_price_at_time_of_booking"] },
+        },
+        {
+          model: User,
+          as: "client",
+          attributes: ["id", "name", "email", "phone_number"],
+        },
+      ],
     });
 
     if (!appointment) {
